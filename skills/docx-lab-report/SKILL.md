@@ -37,10 +37,12 @@ Generate a `.docx` lab report only after the user approves the report outline. D
      --outline report-outline.md \
      --content report-content.md \
      --out OUTPUT.docx \
+     --experiment-name "支持向量机（SVM）" \
      --outline-approved
    ```
 
 If template-copy writing is unsafe, use the script's `--mode rebuild` fallback only after telling the user that page-level fidelity may be lower.
+The outline file is an approval gate and is not appended to the final report unless `--include-outline` is explicitly supplied.
 
 ## Content Boundaries
 

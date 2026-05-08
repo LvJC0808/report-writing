@@ -70,24 +70,51 @@ def ooxml_paragraph(style: str, text: str) -> str:
     )
 
 
-def build_append_xml(outline: str, content: str) -> bytes:
-    merged = [
-        ("heading1", "经确认的大纲"),
-        *paragraphs_from_markdown(outline),
-        ("heading1", "报告正文"),
-        *paragraphs_from_markdown(content),
-    ]
+def build_append_xml(outline: str, content: str, include_outline: bool = False) -> bytes:
+    merged = []
+    if include_outline:
+        merged.extend([("heading1", "经确认的大纲"), *paragraphs_from_markdown(outline)])
+    merged.extend(paragraphs_from_markdown(content))
     xml = "".join(ooxml_paragraph(style, text) for style, text in merged if text)
     return xml.encode("utf-8")
 
 
-def append_to_template(template: Path, out: Path, outline: str, content: str) -> None:
+def fill_experiment_name(document_xml: bytes, experiment_name: str | None) -> bytes:
+    if not experiment_name:
+        return document_xml
+    import re
+
+    text = document_xml.decode("utf-8")
+    escaped = html.escape(experiment_name, quote=False)
+    pattern = re.compile(
+        r"(<w:p\b(?:(?!</w:p>).)*?<w:t(?:\s[^>]*)?>\s*实验</w:t>"
+        r"(?:(?!</w:p>).)*?<w:t(?:\s[^>]*)?>名称</w:t>"
+        r"(?:(?!</w:p>).)*?<w:t[^>]*xml:space=\"preserve\">)"
+        r"[\s\u00a0]*"
+        r"(</w:t>)",
+        flags=re.DOTALL,
+    )
+    updated, count = pattern.subn(rf"\1{escaped}\2", text, count=1)
+    if count == 0:
+        print("warning: could not locate experiment-name placeholder", file=sys.stderr)
+        return document_xml
+    return updated.encode("utf-8")
+
+
+def append_to_template(
+    template: Path,
+    out: Path,
+    outline: str,
+    content: str,
+    include_outline: bool = False,
+    experiment_name: str | None = None,
+) -> None:
     if out.exists():
         raise FileExistsError(f"refusing to overwrite existing output: {out}")
     if template.resolve() == out.resolve():
         raise ValueError("output path must differ from template path")
 
-    insertion = build_append_xml(outline, content)
+    insertion = build_append_xml(outline, content, include_outline=include_outline)
     out.parent.mkdir(parents=True, exist_ok=True)
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as tmp:
@@ -98,6 +125,7 @@ def append_to_template(template: Path, out: Path, outline: str, content: str) ->
             for item in src.infolist():
                 data = src.read(item.filename)
                 if item.filename == "word/document.xml":
+                    data = fill_experiment_name(data, experiment_name)
                     marker = data.rfind(SECT_PR)
                     if marker == -1:
                         marker = data.rfind(BODY_CLOSE)
@@ -142,6 +170,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", type=Path, required=True, help="Output .docx path")
     parser.add_argument("--mode", choices=("copy-append", "rebuild"), default="copy-append")
     parser.add_argument("--outline-approved", action="store_true", help="Required approval gate")
+    parser.add_argument("--include-outline", action="store_true", help="Also append the approved outline")
+    parser.add_argument("--experiment-name", help="Fill the template's experiment-name field when present")
     args = parser.parse_args(argv)
 
     if not args.outline_approved:
@@ -154,7 +184,14 @@ def main(argv: list[str] | None = None) -> int:
         if args.mode == "copy-append":
             if args.template is None:
                 raise ValueError("--template is required in copy-append mode")
-            append_to_template(args.template, args.out, outline, content)
+            append_to_template(
+                args.template,
+                args.out,
+                outline,
+                content,
+                include_outline=args.include_outline,
+                experiment_name=args.experiment_name,
+            )
         else:
             rebuild_with_python_docx(args.out, outline, content)
     except Exception as exc:  # noqa: BLE001 - command-line tool should report cleanly.
