@@ -15,6 +15,18 @@ If explicit instructions are absent, infer from:
 
 Record low-confidence items under `unknown`. Use the profile only to propose `format-requirements.json`; the user must confirm final heading levels, heading fonts and sizes, body font and size, and caption/table font and size.
 
+Default format, if the user explicitly accepts defaults:
+
+- body: 小四; Chinese 宋体; English and Arabic numerals Times New Roman
+- heading depth: at most 4
+- headings: 黑体
+- heading 1: 四号
+- headings 2-4: 小四
+- numbering: `一、`, `（一）`, `1.`, `（1）`
+- figure and table text: 五号
+
+If the body area contains ordinary body paragraphs whose Chinese font differs from default 宋体, do not auto-switch. Report the font as a candidate and ask the user whether to use it. If confirmed, make it the single body font for all generated body text.
+
 ## Material Classification
 
 Use materials as evidence, not as decoration:

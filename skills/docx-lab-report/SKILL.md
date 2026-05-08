@@ -92,6 +92,21 @@ Do not guess missing fields. Preserve the template's original placeholder, cell,
 
 Template profiling provides suggestions only. The user must explicitly confirm the final format before final writing. If the user wants defaults, record that explicit choice in `format-requirements.json`; do not silently infer it.
 
+Default format, when the user confirms defaults:
+
+- body text: 小四, Chinese 宋体, English and Arabic numerals Times New Roman
+- maximum heading depth: 4
+- all heading fonts: 黑体
+- level 1 heading size: 四号
+- levels 2-4 heading size: 小四
+- level 1 numbering: `一、` `二、`
+- level 2 numbering: `（一）` `（二）`
+- level 3 numbering: `1.` `2.`
+- level 4 numbering: `（1）` `（2）`
+- figure and table text size: 五号
+
+If a normal body paragraph in the template's body area uses a Chinese font different from default 宋体, list it as a body-font candidate and ask whether to adopt it. Adopt it only after user confirmation, then apply that body font consistently to all generated body text.
+
 ## Required Review Files
 
 Before writing the final `.docx`, produce and review:

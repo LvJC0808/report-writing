@@ -18,16 +18,49 @@ NS = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
 
 DEFAULT_RULES = {
     "heading_levels": 4,
-    "heading_font_east_asia": "黑体",
-    "heading_1_size": "四号",
-    "heading_2_to_4_size": "小四号",
-    "numbering": {
-        "level_1": "一、 二、 三、",
-        "level_2": "（一） （二） （三）",
-        "level_3": "1. 2. 3.",
-        "level_4": "（1） （2） （3）",
+    "body": {
+        "font_east_asia": "宋体",
+        "font_ascii": "Times New Roman",
+        "size": "小四",
     },
-    "figure_and_table_text_size": "五号",
+    "heading1": {
+        "font_east_asia": "黑体",
+        "font_ascii": "Times New Roman",
+        "size": "四号",
+        "numbering": "一、 二、 三、",
+        "bold": True,
+    },
+    "heading2": {
+        "font_east_asia": "黑体",
+        "font_ascii": "Times New Roman",
+        "size": "小四",
+        "numbering": "（一） （二） （三）",
+        "bold": True,
+    },
+    "heading3": {
+        "font_east_asia": "黑体",
+        "font_ascii": "Times New Roman",
+        "size": "小四",
+        "numbering": "1. 2. 3.",
+        "bold": True,
+    },
+    "heading4": {
+        "font_east_asia": "黑体",
+        "font_ascii": "Times New Roman",
+        "size": "小四",
+        "numbering": "（1） （2） （3）",
+        "bold": True,
+    },
+    "caption": {
+        "font_east_asia": "宋体",
+        "font_ascii": "Times New Roman",
+        "size": "五号",
+    },
+    "table_text": {
+        "font_east_asia": "宋体",
+        "font_ascii": "Times New Roman",
+        "size": "五号",
+    },
 }
 
 PERSONAL_INFO_PATTERNS = {
