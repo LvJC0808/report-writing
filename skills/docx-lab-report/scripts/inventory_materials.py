@@ -41,6 +41,13 @@ IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tif", ".tiff", ".
 SPREADSHEET_EXTENSIONS = {".xls", ".xlsx", ".ods"}
 DOC_EXTENSIONS = {".doc", ".docx", ".pdf", ".ppt", ".pptx"}
 IGNORE_DIRS = {".git", "__pycache__", ".pytest_cache", "node_modules", ".venv", "venv"}
+IGNORE_FILES = {
+    "format-profile.json",
+    "material-summary.md",
+    "missing-info.md",
+    "report-outline.md",
+    "report-content.md",
+}
 PREVIEW_LIMIT = 3000
 
 
@@ -71,6 +78,8 @@ def classify(path: Path) -> str:
         return "experiment-guidance"
     if suffix in DOC_EXTENSIONS and any(token in name for token in ("报告", "report", "草稿")):
         return "report-draft-or-template"
+    if suffix in DOC_EXTENSIONS and "实验" in name:
+        return "experiment-guidance"
     if suffix in DOC_EXTENSIONS:
         return "document"
     if suffix in TEXT_EXTENSIONS:
@@ -90,6 +99,8 @@ def iter_files(inputs: list[Path]) -> list[Path]:
         for root, dirs, filenames in os.walk(input_path):
             dirs[:] = [name for name in dirs if name not in IGNORE_DIRS]
             for filename in filenames:
+                if filename in IGNORE_FILES:
+                    continue
                 path = Path(root) / filename
                 if path.name.endswith(":Zone.Identifier"):
                     continue
