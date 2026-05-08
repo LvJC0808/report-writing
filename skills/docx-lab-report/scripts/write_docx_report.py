@@ -253,12 +253,17 @@ def fill_personal_info(document, personal_info: dict[str, str]) -> None:
             if label_end >= len(run_indexes):
                 continue
             last_label_run = run_indexes[label_end]
-            for run in paragraph.runs[last_label_run + 1 :]:
-                if run.text.strip("\u00a0 ").strip() != "":
-                    continue
-                padding = " " * max(1, len(run.text) - len(value))
-                run.text = value + padding
-                break
+            blank_runs = [
+                run
+                for run in paragraph.runs[last_label_run + 1 :]
+                if run.text.strip("\u00a0 ").strip() == ""
+            ]
+            target_run = next((run for run in blank_runs if run.font.underline), None)
+            if target_run is None and blank_runs:
+                target_run = blank_runs[0]
+            if target_run is not None:
+                padding = " " * max(1, len(target_run.text) - len(value))
+                target_run.text = value + padding
             else:
                 paragraph.add_run(f" {value}")
             break
