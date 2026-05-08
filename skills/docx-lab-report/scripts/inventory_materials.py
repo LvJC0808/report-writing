@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import os
 import re
 import subprocess
@@ -51,6 +52,8 @@ IGNORE_FILES = {
     "format-requirements.json",
     "material-summary.md",
     "missing-info.md",
+    "figure-summary.md",
+    "table-summary.md",
     "personal-info.json",
     "report-outline.md",
     "report-content.md",
@@ -230,6 +233,114 @@ def write_missing(materials: list[Material], out: Path) -> None:
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def write_figure_summary(materials: list[Material], out: Path) -> None:
+    figures = [material for material in materials if material.category == "figures"]
+    if not figures:
+        remove_stale_optional_output(out)
+        return
+    lines = [
+        "# Figure Summary",
+        "",
+        "Review these figure descriptions before drafting the report. Replace `待确认` with inspected observations or user-confirmed descriptions.",
+        "",
+    ]
+    for index, material in enumerate(figures, 1):
+        stem = material.path.stem.replace("_", " ").replace("-", " ")
+        lines.extend(
+            [
+                f"## 图{index}: {material.path.name}",
+                "",
+                f"- Path: `{material.path}`",
+                f"- Filename signal: {stem}",
+                "- Shows: 待确认",
+                "- Key observations: 待确认",
+                "- Supports section/conclusion: 待确认",
+                "- Limits: Do not infer exact values unless visible in the image or backed by result data.",
+                "",
+            ]
+        )
+    out.write_text("\n".join(lines), encoding="utf-8")
+
+
+def remove_stale_optional_output(out: Path) -> None:
+    try:
+        out.unlink()
+    except FileNotFoundError:
+        return
+    except OSError:
+        return
+
+
+def csv_preview(path: Path) -> tuple[list[str], list[list[str]]]:
+    delimiter = "\t" if path.suffix.lower() == ".tsv" else ","
+    try:
+        with path.open(newline="", encoding="utf-8") as handle:
+            reader = csv.reader(handle, delimiter=delimiter)
+            rows = []
+            for row in reader:
+                rows.append(row)
+                if len(rows) >= 6:
+                    break
+    except UnicodeDecodeError:
+        try:
+            with path.open(newline="", encoding="gb18030") as handle:
+                reader = csv.reader(handle, delimiter=delimiter)
+                rows = []
+                for row in reader:
+                    rows.append(row)
+                    if len(rows) >= 6:
+                        break
+        except OSError:
+            return [], []
+    except OSError:
+        return [], []
+    if not rows:
+        return [], []
+    return rows[0], rows[1:]
+
+
+def write_table_summary(materials: list[Material], out: Path) -> None:
+    tables = [
+        material
+        for material in materials
+        if material.category == "results" and material.path.suffix.lower() in {".csv", ".tsv", ".xls", ".xlsx", ".ods"}
+    ]
+    if not tables:
+        remove_stale_optional_output(out)
+        return
+    lines = [
+        "# Table Summary",
+        "",
+        "Review these table descriptions before drafting the report. Cite extracted columns, rows, or values; do not invent rankings or metrics.",
+        "",
+    ]
+    for index, material in enumerate(tables, 1):
+        headers, rows = csv_preview(material.path) if material.path.suffix.lower() in {".csv", ".tsv"} else ([], [])
+        lines.extend(
+            [
+                f"## 表{index}: {material.path.name}",
+                "",
+                f"- Path: `{material.path}`",
+                f"- Columns: {', '.join(headers) if headers else '待确认'}",
+                "- Key values/rows:",
+            ]
+        )
+        if rows:
+            for row in rows[:3]:
+                lines.append(f"  - {', '.join(row[:8])}")
+        else:
+            lines.append("  - 待确认")
+        lines.extend(
+            [
+                "- Description to include near table: 待确认",
+                "- Supports section/conclusion: 待确认",
+                "- Limits: Only claim values present in this file or confirmed by the user.",
+                "",
+            ]
+        )
+    out.write_text("\n".join(lines), encoding="utf-8")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("inputs", nargs="+", type=Path, help="Material files or directories")
@@ -240,8 +351,16 @@ def main(argv: list[str] | None = None) -> int:
     write_summary(materials, args.out)
     missing_out = args.out.with_name("missing-info.md")
     write_missing(materials, missing_out)
+    figure_out = args.out.with_name("figure-summary.md")
+    table_out = args.out.with_name("table-summary.md")
+    write_figure_summary(materials, figure_out)
+    write_table_summary(materials, table_out)
     print(f"wrote {args.out}")
     print(f"wrote {missing_out}")
+    if figure_out.exists():
+        print(f"wrote {figure_out}")
+    if table_out.exists():
+        print(f"wrote {table_out}")
     return 0
 
 

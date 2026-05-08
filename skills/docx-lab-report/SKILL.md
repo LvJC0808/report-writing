@@ -33,11 +33,12 @@ Generate a `.docx` lab report only after the user approves the report outline. D
    ```
 
 5. Read `material-summary.md` and `missing-info.md`. Treat important claims as grounded only when backed by material files or explicit user input.
-6. Detect personal-info fields from `format-profile.json`. If any exist, list all fields once and ask whether to fill them. Let the user leave fields blank. Save confirmed values to `personal-info.json`.
-7. Draft `report-outline.md` from the template structure and materials.
-8. Stop and ask the user to approve or revise the outline.
-9. After approval, create `report-content.md`. Put figures where they should appear by using Markdown image lines, for example `![图1 数据分布](figures/example.png)`.
-10. Write the `.docx` by filling matching template sections in place:
+6. Review `figure-summary.md` and `table-summary.md` when they exist. Every figure and table used in the final report must have an adjacent description of what it shows, key observations, and how it supports the experiment analysis.
+7. Detect personal-info fields from `format-profile.json`. If any exist, list all fields once and ask whether to fill them. Let the user leave fields blank. Save confirmed values to `personal-info.json`.
+8. Draft `report-outline.md` from the template structure and materials.
+9. Stop and ask the user to approve or revise the outline.
+10. After approval, create `report-content.md`. Put figures where they should appear by using Markdown image lines, for example `![图1 数据分布](figures/example.png)`.
+11. Write the `.docx` by filling matching template sections in place:
 
    ```bash
    python3 <skill>/scripts/write_docx_report.py \
@@ -70,6 +71,17 @@ You must ground these in result files, screenshots, logs, or explicit user confi
 - comparisons and conclusions
 
 If results are missing, leave placeholders or ask for more material. Never create plausible-looking data.
+
+## Figure And Table Descriptions
+
+When materials include figures, screenshots, tables, CSV files, or spreadsheets, do not only insert them or mention filenames. For each figure or table used in the report, write nearby text that states:
+
+- what the figure/table shows
+- the key observations or values that are visible or extracted
+- which experiment section or conclusion it supports
+- any limits, missing raw data, or claims that cannot be made from it
+
+If the image content cannot be inspected reliably, mark the description as `待确认` or ask the user. Do not invent visual trends, table values, or rankings.
 
 ## Personal Information
 
@@ -115,6 +127,8 @@ Before writing the final `.docx`, produce and review:
 - `format-requirements.json`
 - `material-summary.md`
 - `missing-info.md`
+- `figure-summary.md` when figures are present
+- `table-summary.md` when tabular result files are present
 - `report-outline.md`
 
 Use `references/docx-workflow.md` for detailed format inference, material classification, write strategy, and final checks.

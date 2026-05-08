@@ -49,11 +49,25 @@ The outline should show:
 - heading hierarchy and numbering plan
 - which materials support each section
 - missing results or missing figures
+- figure and table descriptions that need confirmation
 - personal fields that will be filled or preserved
 - confirmed format requirements
 - intended figure placement by section
 
 Do not call the writer script without explicit user approval of the outline.
+
+## Figure And Table Handling
+
+Generate `figure-summary.md` for image materials and `table-summary.md` for CSV/spreadsheet materials before drafting the outline.
+
+For every figure/table used in the report, include nearby prose that explains:
+
+- what it shows
+- key visible observations or extracted values
+- what part of the experiment it supports
+- what cannot be concluded without additional data
+
+Image descriptions must be based on inspected image content, surrounding filenames, generated plot titles, or user confirmation. If the image cannot be inspected, mark the description as `待确认`. Table descriptions must cite extracted rows, columns, or values from the data file.
 
 ## Personal Info Handling
 
@@ -98,6 +112,7 @@ Before returning the finished report, verify:
 - numbering is continuous and uses the selected patterns
 - content appears below the matching template sections, not duplicated at the end
 - figures appear in the relevant sections
+- every included figure/table has adjacent descriptive prose
 - result claims are backed by user materials
 - missing data remains marked as placeholder
 - personal fields are either filled from user input or left unchanged
