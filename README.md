@@ -1,4 +1,4 @@
-# Codex Document Skills
+# Codex Document Skills By Lv
 
 这个仓库用于存放可复用的 Codex skills。目前包含一个面向中文或中英双语实验报告的 Word 文档生成 skill。
 
