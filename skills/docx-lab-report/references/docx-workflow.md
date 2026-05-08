@@ -104,6 +104,28 @@ Use append fallback only when matching headings cannot be found.
 
 Never overwrite the source template. Never write final output before outline approval.
 
+## DOCX Package Safety
+
+Treat the final report as a DOCX package, not just a saved filename. A valid report must:
+
+- open as a ZIP archive
+- contain `[Content_Types].xml`, `_rels/.rels`, and `word/document.xml`
+- keep image relationship targets resolvable under the package
+- avoid `[缺少图片：...]` placeholders
+- keep the approved outline as a gate artifact, not as copied report body
+- have a reviewed writer summary showing the mode used and matched section count
+
+After writing, always run:
+
+```bash
+python3 <skill>/scripts/validate_docx_report.py OUTPUT.docx \
+  --template TEMPLATE.docx \
+  --outline report-outline.md \
+  --summary OUTPUT.write-summary.json
+```
+
+If validation reports append fallback, tell the user the content may have been appended instead of filled into exact template positions. Only rerun with `--allow-append` after that fallback is accepted.
+
 ## Final Checklist
 
 Before returning the finished report, verify:
@@ -118,3 +140,5 @@ Before returning the finished report, verify:
 - personal fields are either filled from user input or left unchanged
 - template file was not overwritten
 - final `.docx` opens as a valid ZIP package
+- `OUTPUT.write-summary.json` records the expected mode and matched section count
+- `validate_docx_report.py` passes on the exact output file

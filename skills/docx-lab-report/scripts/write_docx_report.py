@@ -47,6 +47,30 @@ class Section:
     blocks: list[Block]
 
 
+@dataclass
+class WriteSummary:
+    output: str
+    template: str
+    requested_mode: str
+    mode_used: str = ""
+    matched_sections: int = 0
+    inserted_images: list[str] | None = None
+    missing_images: list[str] | None = None
+    append_fallback_used: bool = False
+
+    def to_dict(self) -> dict:
+        return {
+            "output": self.output,
+            "template": self.template,
+            "requested_mode": self.requested_mode,
+            "mode_used": self.mode_used,
+            "matched_sections": self.matched_sections,
+            "inserted_images": self.inserted_images or [],
+            "missing_images": self.missing_images or [],
+            "append_fallback_used": self.append_fallback_used,
+        }
+
+
 def read_text(path: Path) -> str:
     if not path.exists():
         raise FileNotFoundError(path)
@@ -202,7 +226,18 @@ def set_paragraph_text(paragraph, text: str, style: dict, bold_default: bool = F
     apply_run_style(run, style, bold_default=bold_default)
 
 
-def insert_blocks_after(anchor, blocks: list[Block], requirements: dict) -> None:
+def safe_image_width(document) -> float:
+    try:
+        section = document.sections[0]
+        content_width_emu = int(section.page_width) - int(section.left_margin) - int(section.right_margin)
+    except Exception:
+        return 5.6
+    if content_width_emu <= 0:
+        return 5.6
+    return min(5.6, content_width_emu / 914400)
+
+
+def insert_blocks_after(anchor, blocks: list[Block], requirements: dict, summary: WriteSummary, image_width: float) -> None:
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Inches
 
@@ -213,12 +248,18 @@ def insert_blocks_after(anchor, blocks: list[Block], requirements: dict) -> None
             set_paragraph_text(cursor, block.text, style_for(requirements, "heading2"), bold_default=True)
         elif block.kind == "image":
             if block.path is None or not block.path.exists():
+                if summary.missing_images is None:
+                    summary.missing_images = []
+                summary.missing_images.append(str(block.path))
                 cursor = paragraph_after(cursor)
                 set_paragraph_text(cursor, f"[缺少图片：{block.path}]", style_for(requirements, "body"))
                 continue
             cursor = paragraph_after(cursor)
             cursor.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            cursor.add_run().add_picture(str(block.path), width=Inches(5.6))
+            cursor.add_run().add_picture(str(block.path), width=Inches(image_width))
+            if summary.inserted_images is None:
+                summary.inserted_images = []
+            summary.inserted_images.append(str(block.path))
             if block.caption:
                 cursor = paragraph_after(cursor)
                 cursor.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -278,10 +319,11 @@ def find_template_sections(document) -> list[tuple[int, str, object]]:
     return sections
 
 
-def fill_sections(document, sections: list[Section], requirements: dict) -> int:
+def fill_sections(document, sections: list[Section], requirements: dict, summary: WriteSummary) -> int:
     template_sections = find_template_sections(document)
     content_by_key = {normalize_heading(section.heading): section for section in sections if section.heading}
     matched = 0
+    image_width = safe_image_width(document)
 
     for pos in range(len(template_sections) - 1, -1, -1):
         start_index, key, heading_paragraph = template_sections[pos]
@@ -291,12 +333,13 @@ def fill_sections(document, sections: list[Section], requirements: dict) -> int:
         end_index = template_sections[pos + 1][0] if pos + 1 < len(template_sections) else len(document.paragraphs)
         for paragraph in reversed(document.paragraphs[start_index + 1 : end_index]):
             delete_paragraph(paragraph)
-        insert_blocks_after(heading_paragraph, section.blocks, requirements)
+        insert_blocks_after(heading_paragraph, section.blocks, requirements, summary, image_width)
         matched += 1
     return matched
 
 
-def append_sections(document, title: str | None, sections: list[Section], requirements: dict) -> None:
+def append_sections(document, title: str | None, sections: list[Section], requirements: dict, summary: WriteSummary) -> None:
+    image_width = safe_image_width(document)
     if title:
         paragraph = document.add_paragraph()
         set_paragraph_text(paragraph, title, style_for(requirements, "heading1"), bold_default=True)
@@ -304,10 +347,10 @@ def append_sections(document, title: str | None, sections: list[Section], requir
         if section.heading:
             paragraph = document.add_paragraph()
             set_paragraph_text(paragraph, section.heading, style_for(requirements, "heading1"), bold_default=True)
-            insert_blocks_after(paragraph, section.blocks, requirements)
+            insert_blocks_after(paragraph, section.blocks, requirements, summary, image_width)
         else:
             if document.paragraphs:
-                insert_blocks_after(document.paragraphs[-1], section.blocks, requirements)
+                insert_blocks_after(document.paragraphs[-1], section.blocks, requirements, summary, image_width)
 
 
 def write_report(
@@ -317,7 +360,7 @@ def write_report(
     requirements_path: Path | None,
     personal_info_path: Path | None,
     mode: str,
-) -> int:
+) -> WriteSummary:
     if out.exists():
         raise FileExistsError(f"refusing to overwrite existing output: {out}")
     if template.resolve() == out.resolve():
@@ -333,18 +376,22 @@ def write_report(
     title, sections = parse_markdown_sections(read_text(content_path), content_path.parent)
 
     document = Document(template)
+    summary = WriteSummary(output=str(out), template=str(template), requested_mode=mode)
     fill_personal_info(document, personal_info)
     matched = 0
     if mode != "append":
-        matched = fill_sections(document, sections, requirements)
+        matched = fill_sections(document, sections, requirements, summary)
     if matched == 0:
         if mode == "section-fill":
             raise ValueError("no matching template sections found; rerun with --mode append if acceptable")
-        append_sections(document, title, sections, requirements)
+        summary.append_fallback_used = mode != "append"
+        append_sections(document, title, sections, requirements, summary)
 
     out.parent.mkdir(parents=True, exist_ok=True)
     document.save(out)
-    return matched
+    summary.matched_sections = matched
+    summary.mode_used = "section-fill" if matched else "append"
+    return summary
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -355,6 +402,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--format-requirements", type=Path, help="Confirmed format requirements JSON")
     parser.add_argument("--personal-info", type=Path, help="Confirmed personal-info JSON")
     parser.add_argument("--out", type=Path, required=True, help="Output .docx path")
+    parser.add_argument("--summary-out", type=Path, help="Output write summary JSON path")
     parser.add_argument("--mode", choices=("section-fill", "append", "rebuild", "copy-append"), default="section-fill")
     parser.add_argument("--outline-approved", action="store_true", help="Required approval gate")
     args = parser.parse_args(argv)
@@ -368,7 +416,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         read_text(args.outline)  # The outline is an approval artifact, not final content.
-        matched = write_report(
+        summary = write_report(
             template=args.template,
             out=args.out,
             content_path=args.content,
@@ -376,12 +424,16 @@ def main(argv: list[str] | None = None) -> int:
             personal_info_path=args.personal_info,
             mode=args.mode,
         )
+        summary_out = args.summary_out or args.out.with_suffix(".write-summary.json")
+        summary_out.parent.mkdir(parents=True, exist_ok=True)
+        summary_out.write_text(json.dumps(summary.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8")
     except Exception as exc:  # noqa: BLE001 - command-line tool should report cleanly.
         print(f"error: {exc}", file=sys.stderr)
         return 1
 
     print(f"wrote {args.out}")
-    print(f"matched_sections={matched}")
+    print(f"wrote {summary_out}")
+    print(f"matched_sections={summary.matched_sections}")
     return 0
 
 

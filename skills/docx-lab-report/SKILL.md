@@ -1,6 +1,6 @@
 ---
 name: docx-lab-report
-description: Use when creating or updating Chinese or bilingual lab reports in .docx format from a Word template and experiment materials, especially when Codex must preserve report formatting, infer heading styles, summarize files, handle personal-info fields, or generate a report only after outline approval.
+description: Use when creating or updating Chinese or bilingual lab reports in .docx format from Word templates and experiment materials, especially when preserving report formatting, extracting evidence, handling personal-info fields, figures, tables, or final Word package validation.
 ---
 
 # DOCX Lab Report
@@ -50,6 +50,17 @@ Generate a `.docx` lab report only after the user approves the report outline. D
      --personal-info personal-info.json \
      --outline-approved
    ```
+
+12. Validate the generated `.docx` before delivery:
+
+   ```bash
+   python3 <skill>/scripts/validate_docx_report.py OUTPUT.docx \
+     --template TEMPLATE.docx \
+     --outline report-outline.md \
+     --summary OUTPUT.write-summary.json
+   ```
+
+   Do not claim the report is complete unless this fresh validation passes. If append fallback was used, disclose it and rerun validation with `--allow-append` only after the user accepts that fallback.
 
 If template section matching is unsafe, use append fallback only after telling the user that the report may not be filled into the exact template positions. The outline file is an approval gate and is not appended to the final report.
 
@@ -130,5 +141,6 @@ Before writing the final `.docx`, produce and review:
 - `figure-summary.md` when figures are present
 - `table-summary.md` when tabular result files are present
 - `report-outline.md`
+- `OUTPUT.write-summary.json`
 
 Use `references/docx-workflow.md` for detailed format inference, material classification, write strategy, and final checks.

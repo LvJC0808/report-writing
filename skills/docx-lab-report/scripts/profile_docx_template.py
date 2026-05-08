@@ -255,7 +255,51 @@ def parse_page_settings(document_xml: ET.Element | None) -> dict[str, Any]:
             for key in ("top", "right", "bottom", "left", "header", "footer")
             if margin.attrib.get(qn(key))
         }
+    try:
+        width = int(page.get("size", {}).get("w"))
+        left = int(page.get("margin", {}).get("left", 0))
+        right = int(page.get("margin", {}).get("right", 0))
+    except (TypeError, ValueError):
+        return page
+    page["content_width_dxa"] = max(0, width - left - right)
     return page
+
+
+def parse_relationship_targets(rels_xml: ET.Element | None) -> list[dict[str, str]]:
+    if rels_xml is None:
+        return []
+    relationships = []
+    for rel in rels_xml:
+        if not rel.tag.endswith("}Relationship"):
+            continue
+        item = {
+            key.lower(): value
+            for key, value in rel.attrib.items()
+            if key in {"Id", "Type", "Target", "TargetMode"}
+        }
+        if item:
+            relationships.append(item)
+    return relationships
+
+
+def package_facts(names: set[str], document_rels_xml: ET.Element | None) -> dict[str, Any]:
+    selected_parts = sorted(
+        name
+        for name in names
+        if (
+            name.startswith("word/") and name.endswith((".xml", ".rels"))
+        )
+        or (name.startswith("word/media/") and not name.endswith("/"))
+    )
+    return {
+        "parts": selected_parts[:200],
+        "has_headers": any(name.startswith("word/header") and name.endswith(".xml") for name in names),
+        "has_footers": any(name.startswith("word/footer") and name.endswith(".xml") for name in names),
+        "has_numbering": "word/numbering.xml" in names,
+        "has_styles": "word/styles.xml" in names,
+        "media_files": sorted(name for name in names if name.startswith("word/media/") and not name.endswith("/")),
+        "document_relationship_targets": parse_relationship_targets(document_rels_xml),
+    }
 
 
 def detect_personal_fields(texts: list[str]) -> list[dict[str, str]]:
@@ -318,6 +362,7 @@ def build_profile(template: Path) -> dict[str, Any]:
         document_xml = read_xml(package, "word/document.xml")
         styles_xml = read_xml(package, "word/styles.xml")
         numbering_xml = read_xml(package, "word/numbering.xml")
+        document_rels_xml = read_xml(package, "word/_rels/document.xml.rels")
 
     if document_xml is None:
         raise ValueError("DOCX package does not contain word/document.xml")
@@ -359,6 +404,7 @@ def build_profile(template: Path) -> dict[str, Any]:
         "template": str(template),
         "confirmed": confirmed,
         "inferred": inferred,
+        "package": package_facts(names, document_rels_xml),
         "styles": parse_styles(styles_xml),
         "numbering": parse_numbering(numbering_xml),
         "personal_info_fields": detect_personal_fields(texts),
