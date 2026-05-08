@@ -229,25 +229,36 @@ def insert_blocks_after(anchor, blocks: list[Block], requirements: dict) -> None
 
 
 def fill_personal_info(document, personal_info: dict[str, str]) -> None:
+    def normalized_with_map(paragraph):
+        chars = []
+        run_indexes = []
+        for run_index, run in enumerate(paragraph.runs):
+            for char in run.text:
+                if char.isspace() or char == "\u00a0":
+                    continue
+                chars.append(char)
+                run_indexes.append(run_index)
+        return "".join(chars), run_indexes
+
     for label, value in personal_info.items():
         if not value:
             continue
+        normalized_label = re.sub(r"[\s\u00a0]+", "", label)
         for paragraph in document.paragraphs:
-            combined = "".join(run.text for run in paragraph.runs)
-            label_index = combined.find(label)
+            combined, run_indexes = normalized_with_map(paragraph)
+            label_index = combined.find(normalized_label)
             if label_index == -1:
                 continue
-            seen = 0
-            for run in paragraph.runs:
-                start = seen
-                end = seen + len(run.text)
-                seen = end
-                if end <= label_index + len(label):
+            label_end = label_index + len(normalized_label) - 1
+            if label_end >= len(run_indexes):
+                continue
+            last_label_run = run_indexes[label_end]
+            for run in paragraph.runs[last_label_run + 1 :]:
+                if run.text.strip("\u00a0 ").strip() != "":
                     continue
-                if run.text.strip("\u00a0 ").strip() == "":
-                    padding = " " * max(1, len(run.text) - len(value))
-                    run.text = value + padding
-                    break
+                padding = " " * max(1, len(run.text) - len(value))
+                run.text = value + padding
+                break
             else:
                 paragraph.add_run(f" {value}")
             break
