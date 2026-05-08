@@ -13,19 +13,20 @@ If explicit instructions are absent, infer from:
 - table paragraph runs for table text style
 - page settings, margins, headers, and footers
 
-Record low-confidence items under `unknown` or ask the user before writing.
+Record low-confidence items under `unknown`. Use the profile only to propose `format-requirements.json`; the user must confirm final heading levels, heading fonts and sizes, body font and size, and caption/table font and size.
 
 ## Material Classification
 
 Use materials as evidence, not as decoration:
 
-- guidance documents: purpose, principle, tasks, grading requirements
-- code: algorithm, key functions, environment, run method
-- README: setup and command sequence
-- logs: actual execution behavior and errors
-- CSV/spreadsheets: result tables and metrics
-- screenshots/images: result figures and visible evidence
-- report drafts: wording source, not a trusted factual source by itself
+- `template`: report template files
+- `guidance`: experiment instructions, requirements, task descriptions, grading requirements
+- `source-code`: code, notebooks, scripts, build/run files
+- `results`: CSV/spreadsheets/logs/model outputs
+- `figures`: screenshots, plots, diagrams, result images
+- `other`: supporting files that need user interpretation
+
+Do not rely on a single filename substring as decisive evidence. For PDF/DOCX guidance files, inspect extracted text for signals such as `实验目的`, `实验步骤`, `实验要求`, `实验准备`, `问题背景`, and `提交要求`.
 
 When there is a conflict between a draft and raw material, prefer raw material or ask the user.
 
@@ -37,6 +38,8 @@ The outline should show:
 - which materials support each section
 - missing results or missing figures
 - personal fields that will be filled or preserved
+- confirmed format requirements
+- intended figure placement by section
 
 Do not call the writer script without explicit user approval of the outline.
 
@@ -48,20 +51,30 @@ Ask once with all detected fields. Accept partial answers. Blank fields remain p
 
 When writing:
 
+- save confirmed values to `personal-info.json`
 - prefer table cells, existing runs, tab stops, and underlines over space padding
 - preserve the original run style if replacing text
 - use visual-width spacing only when the original template is clearly space-aligned
 
 ## DOCX Write Strategy
 
-Default to copying the template and inserting report content into the copied file. This best preserves:
+Default to copying the template and filling matching sections in place. This best preserves:
 
 - page settings and margins
 - headers, footers, and page numbers
 - existing styles and numbering definitions
 - embedded media and relationships
 
-Use rebuild mode only when the template cannot be safely edited. Rebuild mode may lose exact page fidelity.
+The writer should:
+
+- locate top-level template headings
+- remove blank or placeholder paragraphs under each matched heading
+- insert matching content under that heading
+- preserve the template heading paragraphs
+- apply confirmed fonts and sizes to new headings/body text
+- insert images close to the relevant paragraphs, not as a generic appendix
+
+Use append fallback only when matching headings cannot be found.
 
 Never overwrite the source template. Never write final output before outline approval.
 
@@ -71,6 +84,8 @@ Before returning the finished report, verify:
 
 - title levels match the approved outline
 - numbering is continuous and uses the selected patterns
+- content appears below the matching template sections, not duplicated at the end
+- figures appear in the relevant sections
 - result claims are backed by user materials
 - missing data remains marked as placeholder
 - personal fields are either filled from user input or left unchanged

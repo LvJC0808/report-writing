@@ -18,7 +18,14 @@ Generate a `.docx` lab report only after the user approves the report outline. D
    python3 <skill>/scripts/profile_docx_template.py TEMPLATE.docx --out format-profile.json
    ```
 
-3. Review `format-profile.json`. If the profile has unknown format items or weak inferences, ask the user to confirm or accept defaults.
+3. Review `format-profile.json`, then create `format-requirements.json` and ask the user to explicitly confirm:
+   - heading depth
+   - numbering pattern for each heading level
+   - Chinese font and size for every heading level
+   - Chinese font and size for body text
+   - Chinese font and size for table and figure captions
+
+   Do not write the final `.docx` until these requirements are confirmed.
 4. Inventory materials:
 
    ```bash
@@ -26,10 +33,11 @@ Generate a `.docx` lab report only after the user approves the report outline. D
    ```
 
 5. Read `material-summary.md` and `missing-info.md`. Treat important claims as grounded only when backed by material files or explicit user input.
-6. Detect personal-info fields from `format-profile.json`. If any exist, list all fields once and ask whether to fill them. Let the user leave fields blank.
+6. Detect personal-info fields from `format-profile.json`. If any exist, list all fields once and ask whether to fill them. Let the user leave fields blank. Save confirmed values to `personal-info.json`.
 7. Draft `report-outline.md` from the template structure and materials.
 8. Stop and ask the user to approve or revise the outline.
-9. After approval, create the report content and write the `.docx`:
+9. After approval, create `report-content.md`. Put figures where they should appear by using Markdown image lines, for example `![图1 数据分布](figures/example.png)`.
+10. Write the `.docx` by filling matching template sections in place:
 
    ```bash
    python3 <skill>/scripts/write_docx_report.py \
@@ -37,12 +45,12 @@ Generate a `.docx` lab report only after the user approves the report outline. D
      --outline report-outline.md \
      --content report-content.md \
      --out OUTPUT.docx \
-     --experiment-name "支持向量机（SVM）" \
+     --format-requirements format-requirements.json \
+     --personal-info personal-info.json \
      --outline-approved
    ```
 
-If template-copy writing is unsafe, use the script's `--mode rebuild` fallback only after telling the user that page-level fidelity may be lower.
-The outline file is an approval gate and is not appended to the final report unless `--include-outline` is explicitly supplied.
+If template section matching is unsafe, use append fallback only after telling the user that the report may not be filled into the exact template positions. The outline file is an approval gate and is not appended to the final report.
 
 ## Content Boundaries
 
@@ -80,25 +88,16 @@ When personal fields are detected, ask once:
 
 Do not guess missing fields. Preserve the template's original placeholder, cell, underline, tab stop, or spacing when a field is left blank.
 
-## Default Format Rules
+## Format Requirements
 
-Use these only when the template lacks enough evidence:
-
-- four heading levels
-- all heading fonts: 黑体
-- level 1 heading size: 四号
-- levels 2-4 heading size: 小四号
-- level 1 numbering: `一、` `二、`
-- level 2 numbering: `（一）` `（二）`
-- level 3 numbering: `1.` `2.`
-- level 4 numbering: `（1）` `（2）`
-- figure and table text size: 五号
+Template profiling provides suggestions only. The user must explicitly confirm the final format before final writing. If the user wants defaults, record that explicit choice in `format-requirements.json`; do not silently infer it.
 
 ## Required Review Files
 
 Before writing the final `.docx`, produce and review:
 
 - `format-profile.json`
+- `format-requirements.json`
 - `material-summary.md`
 - `missing-info.md`
 - `report-outline.md`
