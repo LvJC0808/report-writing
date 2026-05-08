@@ -1,1 +1,5 @@
 *:Zone.Identifier
+*.docx
+~$*.docx
+__pycache__/
+*.py[cod]

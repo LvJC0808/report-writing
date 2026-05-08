@@ -1,0 +1,4 @@
+interface:
+  display_name: "DOCX Lab Report"
+  short_description: "Draft lab reports from DOCX templates."
+  default_prompt: "Use $docx-lab-report to profile my DOCX template, summarize experiment materials, confirm an outline, and generate a formatted lab report."
